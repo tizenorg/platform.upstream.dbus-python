@@ -9,6 +9,12 @@
 /* dbus-python minor version */
 #undef DBUS_PYTHON_MINOR_VERSION
 
+/* Define to 1 if the system has the type `DBusBasicValue'. */
+#undef HAVE_DBUSBASICVALUE
+
+/* Define to 1 if you have the `dbus_validate_utf8' function. */
+#undef HAVE_DBUS_VALIDATE_UTF8
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 

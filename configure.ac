@@ -5,8 +5,8 @@ dnl If not 1, append datestamp to the version number
 m4_define(dbus_python_released, 1)
 dnl The dbus-python version number (must actually be numeric at the moment)
 m4_define(dbus_python_major_version, 1)
-m4_define(dbus_python_minor_version, 0)
-m4_define(dbus_python_micro_version, 0)
+m4_define(dbus_python_minor_version, 1)
+m4_define(dbus_python_micro_version, 1)
 
 m4_define(dbus_python_maybe_datestamp,
           m4_esyscmd([if test x]dbus_python_released[ != x1; then date +.%Y%m%d | tr -d '\n\r'; fi]))
@@ -49,6 +49,11 @@ AM_PROG_CC_C_O
 AM_PATH_PYTHON([2.6])
 
 AM_CHECK_PYTHON_HEADERS(,[AC_MSG_ERROR(could not find Python headers)])
+
+# This command exits 0 (success) if sys.version >= "3", or 1 (failure)
+# if sys.version < "3" (i.e. starts with "2").
+AM_CONDITIONAL([HAVE_PYTHON_3],
+  [$PYTHON -c "import sys; sys.exit(sys.version < '3')"])
 
 PLATFORM=`$PYTHON -c "from __future__ import print_function; from distutils import util; print(util.get_platform())"`
 AC_SUBST(PLATFORM)
@@ -151,6 +156,15 @@ AM_CONDITIONAL([ENABLE_DOCS], [test "$enable_html_docs" != no])
 
 PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.4])
 PKG_CHECK_MODULES(DBUS_GLIB, [dbus-glib-1 >= 0.70])
+
+dbuspy_save_CFLAGS="$CFLAGS"
+dbuspy_save_LIBS="$LIBS"
+CFLAGS="$CFLAGS $DBUS_CFLAGS"
+LIBS="$CFLAGS $DBUS_LIBS"
+AC_CHECK_TYPES([DBusBasicValue], [], [], [#include <dbus/dbus.h>])
+AC_CHECK_FUNCS([dbus_validate_utf8])
+CFLAGS="$dbuspy_save_CFLAGS"
+LIBS="$dbuspy_save_LIBS"
 
 TP_COMPILER_WARNINGS([CFLAGS_WARNINGS], [test] dbus_python_released [= 0],
   [all \

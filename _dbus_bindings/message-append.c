@@ -29,6 +29,7 @@
 #include <assert.h>
 
 #define DBG_IS_TOO_VERBOSE
+#include "compat-internal.h"
 #include "types-internal.h"
 #include "message-internal.h"
 
@@ -248,8 +249,16 @@ _signature_string_from_pyobject(PyObject *obj, long *variant_level_ptr)
             return NATIVESTR_FROMSTR(DBUS_TYPE_INT64_AS_STRING);
     }
 #endif  /* PY3 */
-    else if (PyUnicode_Check(obj))
-        return NATIVESTR_FROMSTR(DBUS_TYPE_STRING_AS_STRING);
+    else if (PyUnicode_Check(obj)) {
+        /* Object paths and signatures are unicode subtypes in Python 3
+         * (the first two cases will never be true in Python 2) */
+        if (DBusPyObjectPath_Check(obj))
+            return NATIVESTR_FROMSTR(DBUS_TYPE_OBJECT_PATH_AS_STRING);
+        else if (DBusPySignature_Check(obj))
+            return NATIVESTR_FROMSTR(DBUS_TYPE_SIGNATURE_AS_STRING);
+        else
+            return NATIVESTR_FROMSTR(DBUS_TYPE_STRING_AS_STRING);
+    }
 #if defined(DBUS_TYPE_UNIX_FD)
     else if (DBusPyUnixFd_Check(obj))
         return NATIVESTR_FROMSTR(DBUS_TYPE_UNIX_FD_AS_STRING);
@@ -265,6 +274,8 @@ _signature_string_from_pyobject(PyObject *obj, long *variant_level_ptr)
             return NATIVESTR_FROMSTR(DBUS_TYPE_DOUBLE_AS_STRING);
     }
     else if (PyBytes_Check(obj)) {
+        /* Object paths and signatures are bytes subtypes in Python 2
+         * (the first two cases will never be true in Python 3) */
         if (DBusPyObjectPath_Check(obj))
             return NATIVESTR_FROMSTR(DBUS_TYPE_OBJECT_PATH_AS_STRING);
         else if (DBusPySignature_Check(obj))
@@ -520,6 +531,7 @@ _message_iter_append_string(DBusMessageIter *appender,
                             dbus_bool_t allow_object_path_attr)
 {
     char *s;
+    PyObject *utf8;
 
     if (sig_type == DBUS_TYPE_OBJECT_PATH && allow_object_path_attr) {
         PyObject *object_path = get_object_path (obj);
@@ -539,44 +551,87 @@ _message_iter_append_string(DBusMessageIter *appender,
     }
 
     if (PyBytes_Check(obj)) {
-        PyObject *unicode;
-
-        /* Raise TypeError if the string has embedded NULs */
-        if (PyBytes_AsStringAndSize(obj, &s, NULL) < 0) return -1;
-        /* Surely there's a faster stdlib way to validate UTF-8... */
-        unicode = PyUnicode_DecodeUTF8(s, PyBytes_GET_SIZE(obj), NULL);
-        if (!unicode) {
-            PyErr_SetString(PyExc_UnicodeError, "String parameters "
-                            "to be sent over D-Bus must be valid UTF-8");
-            return -1;
-        }
-        Py_CLEAR(unicode);
-
-        DBG("Performing actual append: string %s", s);
-        if (!dbus_message_iter_append_basic(appender, sig_type,
-                                            &s)) {
-            PyErr_NoMemory();
-            return -1;
-        }
+        utf8 = obj;
+        Py_INCREF(obj);
     }
     else if (PyUnicode_Check(obj)) {
-        PyObject *utf8 = PyUnicode_AsUTF8String(obj);
+        utf8 = PyUnicode_AsUTF8String(obj);
         if (!utf8) return -1;
-        /* Raise TypeError if the string has embedded NULs */
-        if (PyBytes_AsStringAndSize(utf8, &s, NULL) < 0) return -1;
-        DBG("Performing actual append: string (from unicode) %s", s);
-        if (!dbus_message_iter_append_basic(appender, sig_type, &s)) {
-            Py_CLEAR(utf8);
-            PyErr_NoMemory();
-            return -1;
-        }
-        Py_CLEAR(utf8);
     }
     else {
         PyErr_SetString(PyExc_TypeError,
                         "Expected a string or unicode object");
         return -1;
     }
+
+    /* Raise TypeError if the string has embedded NULs */
+    if (PyBytes_AsStringAndSize(utf8, &s, NULL) < 0)
+        return -1;
+
+    /* Validate UTF-8, strictly */
+#ifdef HAVE_DBUS_VALIDATE_UTF8
+    if (!dbus_validate_utf8(s, NULL)) {
+        PyErr_SetString(PyExc_UnicodeError, "String parameters "
+                        "to be sent over D-Bus must be valid UTF-8 "
+                        "with no noncharacter code points");
+        return -1;
+    }
+#else
+    {
+        PyObject *back_to_unicode;
+        PyObject *utf32;
+        Py_ssize_t i;
+
+        /* This checks for syntactically valid UTF-8, but does not check
+         * for noncharacters (U+nFFFE, U+nFFFF for any n, or U+FDD0..U+FDEF).
+         */
+        back_to_unicode = PyUnicode_DecodeUTF8(s, PyBytes_GET_SIZE(utf8),
+                                               "strict");
+
+        if (!back_to_unicode) {
+            return -1;
+        }
+
+        utf32 = PyUnicode_AsUTF32String(back_to_unicode);
+        Py_CLEAR(back_to_unicode);
+
+        if (!utf32) {
+            return -1;
+        }
+
+        for (i = 0; i < PyBytes_GET_SIZE(utf32) / 4; i++) {
+            dbus_uint32_t *p;
+
+            p = (dbus_uint32_t *) (PyBytes_AS_STRING(utf32)) + i;
+
+            if (/* noncharacters U+nFFFE, U+nFFFF */
+                (*p & 0xFFFF) == 0xFFFE ||
+                (*p & 0xFFFF) == 0xFFFF ||
+                /* noncharacters U+FDD0..U+FDEF */
+                (*p >= 0xFDD0 && *p <= 0xFDEF) ||
+                /* surrogates U+D800..U+DBFF (low), U+DC00..U+DFFF (high) */
+                (*p >= 0xD800 && *p <= 0xDFFF) ||
+                (*p >= 0x110000)) {
+                Py_CLEAR(utf32);
+                PyErr_SetString(PyExc_UnicodeError, "String parameters "
+                                "to be sent over D-Bus must be valid UTF-8 "
+                                "with no noncharacter code points");
+                return -1;
+            }
+        }
+
+        Py_CLEAR(utf32);
+    }
+#endif
+
+    DBG("Performing actual append: string (from unicode) %s", s);
+    if (!dbus_message_iter_append_basic(appender, sig_type, &s)) {
+        Py_CLEAR(utf8);
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    Py_CLEAR(utf8);
     return 0;
 }
 
@@ -999,18 +1054,7 @@ _message_iter_append_pyobject(DBusMessageIter *appender,
                               dbus_bool_t *more)
 {
     int sig_type = dbus_signature_iter_get_current_type(sig_iter);
-    union {
-      dbus_bool_t b;
-      double d;
-      dbus_uint16_t uint16;
-      dbus_int16_t int16;
-      dbus_uint32_t uint32;
-      dbus_int32_t int32;
-#if defined(DBUS_HAVE_INT64) && defined(HAVE_LONG_LONG)
-      dbus_uint64_t uint64;
-      dbus_int64_t int64;
-#endif
-    } u;
+    DBusBasicValue u;
     int ret = -1;
 
 #ifdef USING_DBG
@@ -1026,13 +1070,13 @@ _message_iter_append_pyobject(DBusMessageIter *appender,
 
       case DBUS_TYPE_BOOLEAN:
           if (PyObject_IsTrue(obj)) {
-              u.b = 1;
+              u.bool_val = 1;
           }
           else {
-              u.b = 0;
+              u.bool_val = 0;
           }
-          DBG("Performing actual append: bool(%ld)", (long)u.b);
-          if (!dbus_message_iter_append_basic(appender, sig_type, &u.b)) {
+          DBG("Performing actual append: bool(%ld)", (long)u.bool_val);
+          if (!dbus_message_iter_append_basic(appender, sig_type, &u.bool_val)) {
               PyErr_NoMemory();
               ret = -1;
               break;
@@ -1041,13 +1085,13 @@ _message_iter_append_pyobject(DBusMessageIter *appender,
           break;
 
       case DBUS_TYPE_DOUBLE:
-          u.d = PyFloat_AsDouble(obj);
+          u.dbl = PyFloat_AsDouble(obj);
           if (PyErr_Occurred()) {
               ret = -1;
               break;
           }
-          DBG("Performing actual append: double(%f)", u.d);
-          if (!dbus_message_iter_append_basic(appender, sig_type, &u.d)) {
+          DBG("Performing actual append: double(%f)", u.dbl);
+          if (!dbus_message_iter_append_basic(appender, sig_type, &u.dbl)) {
               PyErr_NoMemory();
               ret = -1;
               break;
@@ -1057,12 +1101,14 @@ _message_iter_append_pyobject(DBusMessageIter *appender,
 
 #ifdef WITH_DBUS_FLOAT32
       case DBUS_TYPE_FLOAT:
-          u.d = PyFloat_AsDouble(obj);
+          u.dbl = PyFloat_AsDouble(obj);
           if (PyErr_Occurred()) {
               ret = -1;
               break;
           }
-          u.f = (float)u.d;
+          /* FIXME: DBusBasicValue will need to grow a float member if
+           * float32 becomes supported */
+          u.f = (float)u.dbl;
           DBG("Performing actual append: float(%f)", u.f);
           if (!dbus_message_iter_append_basic(appender, sig_type, &u.f)) {
               PyErr_NoMemory();
@@ -1075,14 +1121,14 @@ _message_iter_append_pyobject(DBusMessageIter *appender,
 
           /* The integer types are all basically the same - we delegate to
           intNN_range_check() */
-#define PROCESS_INTEGER(size) \
-          u.size = dbus_py_##size##_range_check(obj);\
-          if (u.size == (dbus_##size##_t)(-1) && PyErr_Occurred()) {\
+#define PROCESS_INTEGER(size, member) \
+          u.member = dbus_py_##size##_range_check(obj);\
+          if (u.member == (dbus_##size##_t)(-1) && PyErr_Occurred()) {\
               ret = -1; \
               break; \
           }\
-          DBG("Performing actual append: " #size "(%lld)", (long long)u.size); \
-          if (!dbus_message_iter_append_basic(appender, sig_type, &u.size)) {\
+          DBG("Performing actual append: " #size "(%lld)", (long long)u.member); \
+          if (!dbus_message_iter_append_basic(appender, sig_type, &u.member)) {\
               PyErr_NoMemory();\
               ret = -1;\
               break;\
@@ -1090,23 +1136,23 @@ _message_iter_append_pyobject(DBusMessageIter *appender,
           ret = 0;
 
       case DBUS_TYPE_INT16:
-          PROCESS_INTEGER(int16)
+          PROCESS_INTEGER(int16, i16)
           break;
       case DBUS_TYPE_UINT16:
-          PROCESS_INTEGER(uint16)
+          PROCESS_INTEGER(uint16, u16)
           break;
       case DBUS_TYPE_INT32:
-          PROCESS_INTEGER(int32)
+          PROCESS_INTEGER(int32, i32)
           break;
       case DBUS_TYPE_UINT32:
-          PROCESS_INTEGER(uint32)
+          PROCESS_INTEGER(uint32, u32)
           break;
 #if defined(DBUS_HAVE_INT64) && defined(HAVE_LONG_LONG)
       case DBUS_TYPE_INT64:
-          PROCESS_INTEGER(int64)
+          PROCESS_INTEGER(int64, i64)
           break;
       case DBUS_TYPE_UINT64:
-          PROCESS_INTEGER(uint64)
+          PROCESS_INTEGER(uint64, u64)
           break;
 #else
       case DBUS_TYPE_INT64:

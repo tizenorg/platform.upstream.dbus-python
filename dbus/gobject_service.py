@@ -22,20 +22,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-__all__ = ['ExportedGObject']
+import sys
+from warnings import warn as _warn
+_warn(DeprecationWarning("""\
+dbus.gobject_service is deprecated, and is not available under Python 3.
 
-from gi.repository import GObject as gobject
+Porting from gobject (PyGObject 2) to gi.repository.GObject (PyGObject 3),
+and using dbus.gi_service instead of dbus.gobject_service, is recommended.
+"""), DeprecationWarning, stacklevel=2)
+
+if 'gi' in sys.modules:
+    # this worked in dbus-python 1.0, so preserve the functionality
+    from gi.repository import GObject as gobject
+else:
+    # this worked in dbus-python < 1.0
+    import gobject
+
 import dbus.service
-
-# The odd syntax used here is required so that the code is compatible with
-# both Python 2 and Python 3.  It essentially creates a new class called
-# ExportedGObject with a metaclass of ExportGObjectType and an __init__()
-# function.
-#
-# Because GObject and `dbus.service.Object` both have custom metaclasses, the
-# naive approach using simple multiple inheritance won't work. This class has
-# `ExportedGObjectType` as its metaclass, which is sufficient to make it work
-# correctly.
 
 class ExportedGObjectType(gobject.GObjectMeta, dbus.service.InterfaceType):
     """A metaclass which inherits from both GObjectMeta and
@@ -45,39 +48,39 @@ class ExportedGObjectType(gobject.GObjectMeta, dbus.service.InterfaceType):
         gobject.GObjectMeta.__init__(cls, name, bases, dct)
         dbus.service.InterfaceType.__init__(cls, name, bases, dct)
 
+class ExportedGObject(gobject.GObject, dbus.service.Object):
+    """A GObject which is exported on the D-Bus.
 
-def ExportedGObject__init__(self, conn=None, object_path=None, **kwargs):
-    """Initialize an exported GObject.
+    Because GObject and `dbus.service.Object` both have custom metaclasses,
+    the naive approach using simple multiple inheritance won't work. This
+    class has `ExportedGObjectType` as its metaclass, which is sufficient
+    to make it work correctly.
+    """
+    __metaclass__ = ExportedGObjectType
 
-    :Parameters:
-        `conn` : dbus.connection.Connection
-            The D-Bus connection or bus
-        `object_path` : str
-            The object path at which to register this object.
-    :Keywords:
-        `bus_name` : dbus.service.BusName
-            A bus name to be held on behalf of this object, or None.
-        `gobject_properties` : dict
-            GObject properties to be set on the constructed object.
+    def __init__(self, conn=None, object_path=None, **kwargs):
+        """Initialize an exported GObject.
 
-            Any unrecognised keyword arguments will also be interpreted
-            as GObject properties.
-        """
-    bus_name = kwargs.pop('bus_name', None)
-    gobject_properties = kwargs.pop('gobject_properties', None)
+        :Parameters:
+            `conn` : dbus.connection.Connection
+                The D-Bus connection or bus
+            `object_path` : str
+                The object path at which to register this object.
+        :Keywords:
+            `bus_name` : dbus.service.BusName
+                A bus name to be held on behalf of this object, or None.
+            `gobject_properties` : dict
+                GObject properties to be set on the constructed object.
 
-    if gobject_properties is not None:
-        kwargs.update(gobject_properties)
-    gobject.GObject.__init__(self, **kwargs)
-    dbus.service.Object.__init__(self, conn=conn,
-                                 object_path=object_path,
-                                 bus_name=bus_name)
+                Any unrecognised keyword arguments will also be interpreted
+                as GObject properties.
+            """
+        bus_name = kwargs.pop('bus_name', None)
+        gobject_properties = kwargs.pop('gobject_properties', None)
 
-ExportedGObject__doc__ = 'A GObject which is exported on the D-Bus.'
-
-ExportedGObject = ExportedGObjectType(
-    'ExportedGObject',
-    (gobject.GObject, dbus.service.Object),
-    {'__init__': ExportedGObject__init__,
-     '__doc__': ExportedGObject__doc__,
-     })
+        if gobject_properties is not None:
+            kwargs.update(gobject_properties)
+        gobject.GObject.__init__(self, **kwargs)
+        dbus.service.Object.__init__(self, conn=conn,
+                                     object_path=object_path,
+                                     bus_name=bus_name)

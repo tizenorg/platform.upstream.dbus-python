@@ -26,8 +26,8 @@ nobase_python_PYTHON = \
     dbus/decorators.py \
     dbus/exceptions.py \
     dbus/_expat_introspect_parser.py \
+    dbus/gi_service.py \
     dbus/glib.py \
-    dbus/gobject_service.py \
     dbus/__init__.py \
     dbus/lowlevel.py \
     dbus/mainloop/__init__.py \
@@ -36,6 +36,12 @@ nobase_python_PYTHON = \
     dbus/server.py \
     dbus/service.py \
     dbus/types.py
+
+if !HAVE_PYTHON_3
+nobase_python_PYTHON += \
+    dbus/gobject_service.py \
+    $(NULL)
+endif
 
 check_py_sources = $(nobase_python_PYTHON)
 include $(top_srcdir)/tools/check-coding-style.mk
@@ -77,7 +83,7 @@ TXT_RSTDOCS = \
 RSTDOCS = \
 	README \
 	NEWS \
-	TODO
+	$(NULL)
 dist_doc_DATA = $(TXT_RSTDOCS) $(RSTDOCS)
 
 maintainer-upload:
@@ -90,7 +96,7 @@ maintainer-update-website: _maintainer-update-apidocs \
 if ENABLE_DOCS
 _maintainer-update-htmldocs: $(HTML_TXT_RSTDOCS) $(HTML_RSTDOCS)
 	rsync -rtvzPp --chmod=Dg+s,ug+rwX,o=rX doc \
-	$(RSTDOCS) $(HTML_RSTDOCS) \
+	$(patsubst %,$(srcdir)/%,$(RSTDOCS)) $(HTML_RSTDOCS) \
 	dbus.freedesktop.org:/srv/dbus.freedesktop.org/www/doc/dbus-python/
 
 HTML_TXT_RSTDOCS = $(patsubst %.txt,%.html,$(TXT_RSTDOCS))
