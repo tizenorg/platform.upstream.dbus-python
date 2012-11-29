@@ -12,7 +12,7 @@ BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(dbus-glib-1)
 Requires:       libxml2-python
 Requires:       python-xml
-Requires:       dbus >= %( echo `rpm -q --queryformat '%{VERSION}-%{RELEASE}' dbus`)
+Requires:       dbus >= %( echo `rpm -q --queryformat '%{VERSION}' dbus`)
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 %description
@@ -22,8 +22,8 @@ D-Bus python bindings for use with python programs.
 Summary:        Python bindings for D-Bus
 Group:          Development/Libraries/Python
 Requires:       dbus-python = %{version}
-Requires:       dbus >= %( echo `rpm -q --queryformat '%{VERSION}-%{RELEASE}' dbus`)
-Requires:       dbus-devel >= %( echo `rpm -q --queryformat '%{VERSION}-%{RELEASE}' dbus-devel`)
+Requires:       dbus >= %( echo `rpm -q --queryformat '%{VERSION}' dbus`)
+Requires:       dbus-devel >= %( echo `rpm -q --queryformat '%{VERSION}' dbus-devel`)
 
 %description  devel
 Developer files for Python bindings for D-Bus.
