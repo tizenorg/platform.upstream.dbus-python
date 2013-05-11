@@ -46,6 +46,7 @@ make DESTDIR=%{buildroot} install
 %fdupes -s %{buildroot}
 
 %files
+%license COPYING
 %defattr(-,root,root,-)
 %{python_sitelib}/*
 %{python_sitearch}/*
