@@ -1,0 +1,8 @@
+Change-Id: I2e58652f982bd7145706a0b7d5b9320afd6a3d2b
+Code-Review+2: Ryan Ware <ware@linux.intel.com>
+Verified+1: Ryan Ware <ware@linux.intel.com>
+Submitted-by: Ryan Ware <ware@linux.intel.com>
+Submitted-at: Mon, 08 Jul 2013 09:40:54 -0700
+Reviewed-on: https://review.tizen.org/gerrit/4726
+Project: platform/upstream/dbus-python
+Branch: refs/heads/tizen
