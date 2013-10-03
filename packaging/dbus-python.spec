@@ -13,7 +13,6 @@ BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(dbus-glib-1)
 Requires:       libxml2-python
 Requires:       python-xml
-Requires:       dbus >= 1.6.10
 
 %description
 D-Bus python bindings for use with python programs.
@@ -21,8 +20,6 @@ D-Bus python bindings for use with python programs.
 %package  devel
 Summary:        Python bindings for D-Bus
 Requires:       dbus-python = %{version}
-Requires:       dbus >= 1.6.10
-Requires:       dbus-devel >= 1.6.10
 
 %description  devel
 Developer files for Python bindings for D-Bus.
