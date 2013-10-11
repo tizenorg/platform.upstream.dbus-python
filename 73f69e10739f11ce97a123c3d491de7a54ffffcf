@@ -1,0 +1,8 @@
+Code-Review+2: Patrick McCarty <patrick.mccarty@linux.intel.com>
+Verified+1: Anas Nashif <anas.nashif@intel.com>
+Code-Review+1: william douglas <william.douglas@intel.com>
+Submitted-by: Anas Nashif <anas.nashif@intel.com>
+Submitted-at: Fri, 11 Oct 2013 05:34:14 -0700
+Reviewed-on: https://review.tizen.org/gerrit/10522
+Project: platform/upstream/dbus-python
+Branch: refs/heads/tizen
