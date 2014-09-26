@@ -11,11 +11,11 @@ BuildRequires:  fdupes
 BuildRequires:  python-devel
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(dbus-glib-1)
-Requires:       libxml2-python
 Requires:       python-xml
 
 %description
 D-Bus python bindings for use with python programs.
+
 
 %package  devel
 Summary:        Python bindings for D-Bus
@@ -24,13 +24,14 @@ Requires:       dbus-python = %{version}
 %description  devel
 Developer files for Python bindings for D-Bus.
 
+
 %prep
-%setup -q 
+%setup -q
 cp %{SOURCE1001} .
 
 %build
 export CFLAGS="%{optflags} -fstack-protector -fno-strict-aliasing -fPIC"
-%configure --docdir=%{_docdir}/dbus-python
+%reconfigure --docdir=%{_docdir}/dbus-python
 %__make %{?_smp_mflags}
 
 %install
@@ -39,6 +40,7 @@ export CFLAGS="%{optflags} -fstack-protector -fno-strict-aliasing -fPIC"
 
 %remove_docs
 %fdupes -s %{buildroot}
+
 
 %files
 %manifest %{name}.manifest
