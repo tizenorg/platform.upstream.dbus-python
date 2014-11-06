@@ -1,12 +1,12 @@
 Name:           dbus-python
-Version:        1.1.1
+Version:        1.2.0
 Release:        0
 Summary:        Python bindings for D-Bus
 License:        MIT
 Group:          System/Libraries
 Url:            http://www.freedesktop.org/wiki/Software/DBusBindings/
 Source0:        http://dbus.freedesktop.org/releases/dbus-python/dbus-python-%{version}.tar.gz
-Source1001: 	dbus-python.manifest
+Source1001:     dbus-python.manifest
 BuildRequires:  fdupes
 BuildRequires:  python-devel
 BuildRequires:  pkgconfig(dbus-1)
@@ -30,8 +30,8 @@ cp %{SOURCE1001} .
 
 %build
 export CFLAGS="%{optflags} -fstack-protector -fno-strict-aliasing -fPIC"
-%configure --docdir=%{_docdir}/dbus-python
-make %{?_smp_mflags}
+%autogen --docdir=%{_docdir}/dbus-python
+%__make %{?_smp_mflags}
 
 %install
 %make_install
@@ -52,5 +52,3 @@ make %{?_smp_mflags}
 %defattr(-,root,root,-)
 %{_includedir}/dbus-1.0/dbus/dbus-python.h
 %{_libdir}/pkgconfig/dbus-python.pc
-
-%changelog
