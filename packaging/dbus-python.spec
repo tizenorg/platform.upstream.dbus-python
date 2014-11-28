@@ -30,7 +30,7 @@ cp %{SOURCE1001} .
 
 %build
 export CFLAGS="%{optflags} -fstack-protector -fno-strict-aliasing -fPIC"
-%autogen --docdir=%{_docdir}/dbus-python
+%configure --docdir=%{_docdir}/dbus-python
 %__make %{?_smp_mflags}
 
 %install
