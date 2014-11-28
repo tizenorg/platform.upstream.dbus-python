@@ -5,8 +5,8 @@ dnl If not 1, append datestamp to the version number
 m4_define(dbus_python_released, 1)
 dnl The dbus-python version number (must actually be numeric at the moment)
 m4_define(dbus_python_major_version, 1)
-m4_define(dbus_python_minor_version, 1)
-m4_define(dbus_python_micro_version, 1)
+m4_define(dbus_python_minor_version, 2)
+m4_define(dbus_python_micro_version, 0)
 
 m4_define(dbus_python_maybe_datestamp,
           m4_esyscmd([if test x]dbus_python_released[ != x1; then date +.%Y%m%d | tr -d '\n\r'; fi]))
@@ -29,12 +29,25 @@ AC_DEFINE(DBUS_PYTHON_MICRO_VERSION, dbus_python_micro_version, [dbus-python mic
 AC_SUBST(DBUS_PYTHON_MICRO_VERSION, dbus_python_micro_version)
 
 AC_CONFIG_SRCDIR([_dbus_bindings/module.c])
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS(config.h)
 
 AM_INIT_AUTOMAKE([1.9 -Wno-portability])
 
 AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
+
+# mingw32, mingw-w64 are native Windows; for our purposes, Cygwin isn't
+AC_MSG_CHECKING([for native Windows host])
+case "$host" in
+	(*-*-mingw*)
+		windows=yes
+		;;
+	(*)
+		windows=no
+		;;
+esac
+AC_MSG_RESULT([$windows])
+AM_CONDITIONAL([WINDOWS], [test "x$windows" = xyes])
 
 AC_DISABLE_STATIC
 
@@ -45,6 +58,7 @@ m4_define([_LT_AC_TAGCONFIG],[])
 
 AC_PROG_LIBTOOL
 AM_PROG_CC_C_O
+AC_C_INLINE
 
 AM_PATH_PYTHON([2.6])
 
@@ -154,17 +168,8 @@ AC_SUBST([RST2HTMLFLAGS])
 AM_CONDITIONAL([ENABLE_API_DOCS], [test "$enable_api_docs" != no])
 AM_CONDITIONAL([ENABLE_DOCS], [test "$enable_html_docs" != no])
 
-PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.4])
+PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.6])
 PKG_CHECK_MODULES(DBUS_GLIB, [dbus-glib-1 >= 0.70])
-
-dbuspy_save_CFLAGS="$CFLAGS"
-dbuspy_save_LIBS="$LIBS"
-CFLAGS="$CFLAGS $DBUS_CFLAGS"
-LIBS="$CFLAGS $DBUS_LIBS"
-AC_CHECK_TYPES([DBusBasicValue], [], [], [#include <dbus/dbus.h>])
-AC_CHECK_FUNCS([dbus_validate_utf8])
-CFLAGS="$dbuspy_save_CFLAGS"
-LIBS="$dbuspy_save_LIBS"
 
 TP_COMPILER_WARNINGS([CFLAGS_WARNINGS], [test] dbus_python_released [= 0],
   [all \

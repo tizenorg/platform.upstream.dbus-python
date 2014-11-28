@@ -1,3 +1,39 @@
+D-Bus Python Bindings 1.2.0 (2013-05-07)
+========================================
+
+The "compile like it's 1998" release.
+
+Dependencies:
+
+• libdbus 1.6 or later is now required.
+
+Enhancements:
+
+• Unicode Corrigendum 9: when used with a suitable version of libdbus
+  (1.6.10 or later, or 1.7.2 or later), noncharacters in strings are
+  now accepted
+
+Fixes:
+
+• Support DBusException('something with non—ASCII') under Python 2
+  (Michael Vogt, smcv; fd.o #55899)
+
+• Correct some misleading wording in COPYING which was written under the
+  assumption that libdbus could actually be relicensed to MIT/X11
+  (Thiago Macieira)
+
+• Avoid variable-length arrays, because MSVC++ is still stuck in 1998
+  (based on patches from Christoph Höger, fd.o #51725)
+
+• Remove unnecessary uses of stdint.h (fd.o #51725)
+
+• Add support for Unix compilers not supporting 'inline', for completeness
+
+• Use GObject.__class__ instead of GObjectMeta, which can no longer be
+  imported from gi.repository.GObject in pygobject 3.8
+
+• Fix autoreconfiscation on Automake 1.13 (Marko Lindqvist, fd.o #59006)
+
 D-Bus Python Bindings 1.1.1 (2012-06-25)
 ========================================
 
@@ -5,7 +41,7 @@ The "Lemonade Sky" release.
 
 Dependencies:
 
-* libdbus 1.6 or later is now recommended. It is not strictly required yet.
+• libdbus 1.6 or later is now recommended. It is not strictly required yet.
 
 Fixes:
 

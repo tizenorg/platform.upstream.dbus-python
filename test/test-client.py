@@ -39,7 +39,11 @@ import dbus.glib
 import dbus.service
 
 from dbus._compat import is_py2, is_py3
-from gi.repository import GObject as gobject
+
+try:
+    from gi.repository import GObject as gobject
+except ImportError:
+    raise SystemExit(77)
 
 
 logging.basicConfig()
@@ -563,6 +567,8 @@ class TestDBusBindings(unittest.TestCase):
             self.iface.RaiseDBusExceptionNoTraceback()
         except Exception as e:
             self.assertTrue(isinstance(e, dbus.DBusException), e.__class__)
+            self.assertEqual(e.get_dbus_name(),
+                    'com.example.Networking.ServerError')
             self.assertEqual(str(e),
                               'com.example.Networking.ServerError: '
                               'Server not responding')
@@ -573,6 +579,8 @@ class TestDBusBindings(unittest.TestCase):
             self.iface.RaiseDBusExceptionWithTraceback()
         except Exception as e:
             self.assertTrue(isinstance(e, dbus.DBusException), e.__class__)
+            self.assertEqual(e.get_dbus_name(),
+                    'com.example.Misc.RealityFailure')
             self.assertTrue(str(e).startswith('com.example.Misc.RealityFailure: '
                                            'Traceback '),
                          'Wanted a traceback but got:\n%s' % str(e))

@@ -27,6 +27,8 @@ __all__ = ('DBusException', 'MissingErrorHandlerException',
            'IntrospectionParserException', 'UnknownMethodException',
            'NameExistsException')
 
+from dbus._compat import is_py3
+
 
 class DBusException(Exception):
 
@@ -49,7 +51,22 @@ class DBusException(Exception):
                             % ', '.join(kwargs.keys()))
         Exception.__init__(self, *args)
 
+    def __unicode__(self):
+        """Return a unicode error"""
+        # We can't just use Exception.__unicode__ because it chains up weirdly.
+        # https://code.launchpad.net/~mvo/ubuntu/quantal/dbus-python/lp846044/+merge/129214
+        if len(self.args) > 1:
+            s = unicode(self.args)
+        else:
+            s = ''.join(self.args)
+
+        if self._dbus_error_name is not None:
+            return '%s: %s' % (self._dbus_error_name, s)
+        else:
+            return s
+
     def __str__(self):
+        """Return a str error"""
         s = Exception.__str__(self)
         if self._dbus_error_name is not None:
             return '%s: %s' % (self._dbus_error_name, s)
@@ -57,9 +74,17 @@ class DBusException(Exception):
             return s
 
     def get_dbus_message(self):
-        s = Exception.__str__(self)
+        if len(self.args) > 1:
+            if is_py3:
+                s = str(self.args)
+            else:
+                s = unicode(self.args)
+        else:
+            s = ''.join(self.args)
+
         if isinstance(s, bytes):
             return s.decode('utf-8', 'replace')
+
         return s
 
     def get_dbus_name(self):

@@ -569,60 +569,12 @@ _message_iter_append_string(DBusMessageIter *appender,
         return -1;
 
     /* Validate UTF-8, strictly */
-#ifdef HAVE_DBUS_VALIDATE_UTF8
     if (!dbus_validate_utf8(s, NULL)) {
         PyErr_SetString(PyExc_UnicodeError, "String parameters "
                         "to be sent over D-Bus must be valid UTF-8 "
                         "with no noncharacter code points");
         return -1;
     }
-#else
-    {
-        PyObject *back_to_unicode;
-        PyObject *utf32;
-        Py_ssize_t i;
-
-        /* This checks for syntactically valid UTF-8, but does not check
-         * for noncharacters (U+nFFFE, U+nFFFF for any n, or U+FDD0..U+FDEF).
-         */
-        back_to_unicode = PyUnicode_DecodeUTF8(s, PyBytes_GET_SIZE(utf8),
-                                               "strict");
-
-        if (!back_to_unicode) {
-            return -1;
-        }
-
-        utf32 = PyUnicode_AsUTF32String(back_to_unicode);
-        Py_CLEAR(back_to_unicode);
-
-        if (!utf32) {
-            return -1;
-        }
-
-        for (i = 0; i < PyBytes_GET_SIZE(utf32) / 4; i++) {
-            dbus_uint32_t *p;
-
-            p = (dbus_uint32_t *) (PyBytes_AS_STRING(utf32)) + i;
-
-            if (/* noncharacters U+nFFFE, U+nFFFF */
-                (*p & 0xFFFF) == 0xFFFE ||
-                (*p & 0xFFFF) == 0xFFFF ||
-                /* noncharacters U+FDD0..U+FDEF */
-                (*p >= 0xFDD0 && *p <= 0xFDEF) ||
-                /* surrogates U+D800..U+DBFF (low), U+DC00..U+DFFF (high) */
-                (*p >= 0xD800 && *p <= 0xDFFF) ||
-                (*p >= 0x110000)) {
-                Py_CLEAR(utf32);
-                PyErr_SetString(PyExc_UnicodeError, "String parameters "
-                                "to be sent over D-Bus must be valid UTF-8 "
-                                "with no noncharacter code points");
-                return -1;
-            }
-        }
-
-        Py_CLEAR(utf32);
-    }
-#endif
 
     DBG("Performing actual append: string (from unicode) %s", s);
     if (!dbus_message_iter_append_basic(appender, sig_type, &s)) {
@@ -962,6 +914,7 @@ _message_iter_append_variant(DBusMessageIter *appender, PyObject *obj)
     int ret;
     long variant_level;
     dbus_bool_t dummy;
+    DBusMessageIter *variant_iters = NULL;
 
     /* Separate the object into the contained object, and the number of
      * variants it's wrapped in. */
@@ -987,9 +940,16 @@ _message_iter_append_variant(DBusMessageIter *appender, PyObject *obj)
 
     dbus_signature_iter_init(&obj_sig_iter, obj_sig_str);
 
-    { /* scope for variant_iters */
-        DBusMessageIter variant_iters[variant_level];
+    {
         long i;
+
+        variant_iters = calloc (variant_level, sizeof (DBusMessageIter));
+
+        if (!variant_iters) {
+            PyErr_NoMemory();
+            ret = -1;
+            goto out;
+        }
 
         for (i = 0; i < variant_level; i++) {
             DBusMessageIter *child = &variant_iters[i];
@@ -1038,10 +998,12 @@ _message_iter_append_variant(DBusMessageIter *appender, PyObject *obj)
                 goto out;
             }
         }
-
     }
 
 out:
+    if (variant_iters != NULL)
+        free (variant_iters);
+
     Py_CLEAR(obj_sig);
     return ret;
 }

@@ -26,6 +26,8 @@
 export DBUS_FATAL_WARNINGS=1
 ulimit -c unlimited
 
+skipped=
+
 function die() 
 {
     if ! test -z "$DBUS_SESSION_BUS_PID" ; then
@@ -67,6 +69,12 @@ echo "DBUS_TOP_BUILDDIR=$DBUS_TOP_BUILDDIR"
 echo "PYTHONPATH=$PYTHONPATH"
 echo "PYTHON=$PYTHON"
 
+# the exceptions handling test is version specific
+PYMAJOR=$($PYTHON -c 'import sys;print(sys.version_info[0])')
+PYTEST=test-exception-py$PYMAJOR.py
+echo "running $PYTEST"
+$PYTHON "$DBUS_TOP_SRCDIR"/test/$PYTEST || die "$PYTEST failed"
+
 echo "running test-standalone.py"
 $PYTHON "$DBUS_TOP_SRCDIR"/test/test-standalone.py || die "test-standalone.py failed"
 
@@ -88,16 +96,22 @@ $PYTHON "$DBUS_TOP_SRCDIR"/test/test-unusable-main-loop.py || die "... failed"
 
 echo "running cross-test (for better diagnostics use mjj29's dbus-test)"
 
-${MAKE:-make} -s cross-test-server > "$DBUS_TOP_BUILDDIR"/test/cross-server.log&
+$PYTHON "$DBUS_TOP_SRCDIR"/test/cross-test-server.py > "$DBUS_TOP_BUILDDIR"/test/cross-server.log&
 sleep 1
-${MAKE:-make} -s cross-test-client > "$DBUS_TOP_BUILDDIR"/test/cross-client.log
+$PYTHON "$DBUS_TOP_SRCDIR"/test/cross-test-client.py > "$DBUS_TOP_BUILDDIR"/test/cross-client.log
+e=$?
 
-if grep . "$DBUS_TOP_BUILDDIR"/test/cross-client.log >/dev/null; then
+if test $e = 77; then
+  :     # skipped
+elif grep . "$DBUS_TOP_BUILDDIR"/test/cross-client.log >/dev/null; then
   :     # OK
 else
   die "cross-test client produced no output"
 fi
-if grep . "$DBUS_TOP_BUILDDIR"/test/cross-server.log >/dev/null; then
+
+if test $e = 77; then
+  :     # skipped
+elif grep . "$DBUS_TOP_BUILDDIR"/test/cross-server.log >/dev/null; then
   :     # OK
 else
   die "cross-test server produced no output"
@@ -114,16 +128,27 @@ else
   echo "  - cross-test server reported no untested functions"
 fi
 
-echo "running test-client.py"
-$PYTHON "$DBUS_TOP_SRCDIR"/test/test-client.py || die "test-client.py failed"
-echo "running test-signals.py"
-$PYTHON "$DBUS_TOP_SRCDIR"/test/test-signals.py || die "test-signals.py failed"
-
-echo "running test-p2p.py"
-$PYTHON "$DBUS_TOP_SRCDIR"/test/test-p2p.py || die "... failed"
+for script in test-client.py test-signals.py test-p2p.py; do
+    echo "running ${script}"
+    $PYTHON "$DBUS_TOP_SRCDIR"/test/${script}
+    e=$?
+    case "$e" in
+      (77)
+        echo "SKIP: ${script} not run, dependencies missing?"
+        skipped=1
+        ;;
+      (0)
+        echo "PASS: ${script}"
+        ;;
+      (*)
+        die "${script} failed"
+    esac
+done
 
 rm -f "$DBUS_TOP_BUILDDIR"/test/test-service.log
 rm -f "$DBUS_TOP_BUILDDIR"/test/cross-client.log
 rm -f "$DBUS_TOP_BUILDDIR"/test/cross-server.log
 rm -f "$DBUS_TOP_BUILDDIR"/test/monitor.log
+
+if test -n $skipped; then exit 77; fi
 exit 0

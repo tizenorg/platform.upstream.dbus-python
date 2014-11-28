@@ -1,3 +1,301 @@
+commit d0d5b5be685dc4c16b21c54335becc87ca4d6f58
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2013-05-08 08:49:58 +0100
+
+    distribute new tests
+
+ test/Makefile.am |    2 ++
+ 1 file changed, 2 insertions(+)
+
+commit bd6aac594c72d32057a5821fcedb2d36644526aa
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2013-05-08 08:48:28 +0100
+
+    1.2.0
+
+ NEWS         |   10 +++++++++-
+ configure.ac |    6 +++---
+ 2 files changed, 12 insertions(+), 4 deletions(-)
+
+commit 9b26cf8238a7d432fe96a50a75008aa6bce110da
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2013-05-08 08:38:22 +0100
+
+    Add support for skipping tests, and use it
+    
+    Now that Python 2.6 isn't a supported version in Debian, it doesn't
+    get a gi module, but we can still get some minimal test coverage.
+
+ test/cross-test-client.py        |    5 ++++-
+ test/cross-test-server.py        |    5 ++++-
+ test/run-test.sh                 |   37 ++++++++++++++++++++++++++++---------
+ test/run-with-tmp-session-bus.sh |   14 +++++++++++++-
+ test/test-client.py              |    6 +++++-
+ test/test-p2p.py                 |    5 ++++-
+ test/test-signals.py             |    5 ++++-
+ 7 files changed, 62 insertions(+), 15 deletions(-)
+
+commit 0872782255fdbaeda64311a298664597e59ba94f
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2013-05-08 08:37:13 +0100
+
+    utf8 test: pass when used with dbus 1.6.10, 1.7.2
+    
+    We used to reject noncharacters, but now we accept them.
+
+ test/test-standalone.py |   41 +++++++++++++++++++++++++----------------
+ 1 file changed, 25 insertions(+), 16 deletions(-)
+
+commit f909f596705f62a5218cf16d61433364fe2f8168
+Author: Marko Lindqvist <cazfi74 gmail com>
+Date:   2013-05-07 20:16:20 +0100
+
+    Replace AM_CONFIG_HEADER with AC_CONFIG_HEADERS
+    
+    This has been (silently!) deprecated since 2002 and was removed from
+    Automake 1.13.
+    
+    [added commit message -smcv]
+    Reviewed-by: Simon McVittie <simon.mcvittie@collabora.co.uk>
+
+ configure.ac |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 423ee853dfbb4ee9ed89a21e1cf2b6a928e2fc4d
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2013-04-22 17:40:51 +0100
+
+    Use GObject.__class__ instead of GObjectMeta
+    
+    In pygobject 3.8, GObjectMeta is no longer available via
+    gi.repository.GObject. What we actually want is "the metaclass of
+    GObject", so, say so.
+
+ NEWS                    |    3 +++
+ dbus/gi_service.py      |    4 ++--
+ dbus/gobject_service.py |    4 ++--
+ 3 files changed, 7 insertions(+), 4 deletions(-)
+
+commit c9ad0a3909c80c09d33b21db6cb46cfee4489010
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2013-04-22 15:47:06 +0100
+
+    Unset DBUS_STARTER_ADDRESS, DBUS_STARTER_BUS_TYPE
+    
+    See <https://bugs.freedesktop.org/show_bug.cgi?id=63119>.
+
+ test/run-with-tmp-session-bus.sh |    2 ++
+ 1 file changed, 2 insertions(+)
+
+commit 121c294b1853a280b01e0504eb1828c6d0e07bbc
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2013-04-22 15:44:57 +0100
+
+    Require D-Bus 1.6, drop fallback paths
+
+ NEWS                             |    6 +++++
+ _dbus_bindings/compat-internal.h |   19 ---------------
+ _dbus_bindings/message-append.c  |   48 --------------------------------------
+ configure.ac                     |   11 +--------
+ 4 files changed, 7 insertions(+), 77 deletions(-)
+
+commit c57c4d281369589b636aee928238b7cf6e42e00f
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-10-23 19:34:35 +0100
+
+    NEWS
+
+ NEWS |    7 +++++++
+ 1 file changed, 7 insertions(+)
+
+commit f52465232234ae71fa16741abcd57aab155949ad
+Author: Thiago Macieira <thiago.macieira@intel.com>
+Date:   2012-10-23 11:12:21 -0700
+
+    Update the confusing notice of what license dbus-python is under
+    
+    We tried to change the license for the D-Bus core too but were unable
+    to reach all copyright holders. The MIT license was the suggested new
+    license and all reached parties had agreed to.
+    
+    Reviewed-by: Simon McVittie <simon.mcvittie@collabora.co.uk>
+
+ COPYING |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+commit d262628e89115bbcc33c439c77d33733c4a23491
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-10-16 18:33:08 +0100
+
+    DBusException: override both __str__ and __unicode__
+    
+    Avoid chaining up to the superclass, because that behaves particularly
+    oddly. This fixes regression test failures: str(some_dbus_exception) was no
+    longer prefixed with the D-Bus error name under Python 2.
+    
+    Bug: https://bugs.freedesktop.org/show_bug.cgi?id=55899
+
+ dbus/exceptions.py |   28 +++++++++++++++++-----------
+ 1 file changed, 17 insertions(+), 11 deletions(-)
+
+commit 544e05a16e55dad7e666baabfb665997a79d6580
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-10-16 18:31:43 +0100
+
+    Slightly better test coverage
+
+ test/test-client.py |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+commit efdd1823239b02fe5a39e766cbd7597e6c3fcb96
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-10-16 17:52:36 +0100
+
+    Use a form of assertRaises() that works in Python 2.6
+
+ test/test-exception-py2.py |    5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+commit 83615efbed565a689008b00a4ac82fc0fc4e5603
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-10-16 17:52:22 +0100
+
+    Skip test_dbus_exception_convert_str_fail under unusual default encodings
+    
+    This would actually work fine if the default encoding was UTF-8 or
+    Latin-1 or something.
+
+ test/test-exception-py2.py |   11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+commit 09b540bd55fb2fca14d4df7e0c520b8ba0ce4646
+Author: Michael Vogt <mvo@ubuntu.com>
+Date:   2012-10-12 13:37:51 +0200
+
+    Support unicode messages for DBusException in Python 2
+    
+    [commit message amended -smcv]
+    Bug: https://bugs.freedesktop.org/show_bug.cgi?id=55899
+    Reviewed-by: Simon McVittie <simon.mcvittie@collabora.co.uk>
+
+ dbus/exceptions.py         |   23 ++++++++++++++++--
+ test/run-test.sh           |    6 +++++
+ test/test-exception-py2.py |   58 ++++++++++++++++++++++++++++++++++++++++++++
+ test/test-exception-py3.py |   31 +++++++++++++++++++++++
+ 4 files changed, 116 insertions(+), 2 deletions(-)
+
+commit 5558ee11313fd929ed6aeb22228e89de2263e520
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-07-04 12:17:10 +0100
+
+    Link Python extensions differently on Windows
+
+ _dbus_bindings/Makefile.am      |   14 ++++++++++++++
+ _dbus_glib_bindings/Makefile.am |   14 ++++++++++++++
+ configure.ac                    |   13 +++++++++++++
+ 3 files changed, 41 insertions(+)
+
+commit ec2671485a23090c470180eb297e67b86638d9b5
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-07-04 12:15:16 +0100
+
+    Replace incorrect AM_LDFLAGS usage with a proper AM_LDFLAGS/LIBADD split
+
+ _dbus_bindings/Makefile.am      |    6 +++++-
+ _dbus_glib_bindings/Makefile.am |    8 +++++++-
+ 2 files changed, 12 insertions(+), 2 deletions(-)
+
+commit 9c02d05642c8f99e3fe61804bcc33df380ebd5b1
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-07-04 20:27:12 +0100
+
+    run-test.sh: don't go via make to run the cross-test
+    
+    Based on a patch from Christoph Höger.
+    
+    Bug: https://bugs.freedesktop.org/show_bug.cgi?id=51725
+
+ test/run-test.sh |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit e8a507570e12778a0f325786fcf9f5f768019118
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-07-04 19:49:13 +0100
+
+    NEWS
+
+ NEWS |   14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+commit f3199102a68c72460fd0a025ab966557a0996223
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-07-04 19:49:07 +0100
+
+    Don't include stdint.h
+    
+    Every use here turns out to be unnecessary, some compilers *still*
+    don't have it after more than a decade in ISO C, and if we need
+    fixed-length integer types we can use the ones from D-Bus.
+
+ _dbus_bindings/abstract.c       |    2 --
+ _dbus_bindings/bytes.c          |    2 --
+ _dbus_bindings/containers.c     |    2 --
+ _dbus_bindings/float.c          |    2 --
+ _dbus_bindings/signature.c      |    2 --
+ _dbus_bindings/types-internal.h |    1 -
+ 6 files changed, 11 deletions(-)
+
+commit 6f5ec9552ca169b66b338698850a125151e3599c
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-07-04 19:36:26 +0100
+
+    Re-indent now that the indentation is unecessary
+
+ _dbus_bindings/server.c |   61 ++++++++++++++++++++++-------------------------
+ 1 file changed, 29 insertions(+), 32 deletions(-)
+
+commit 5b79604a6d1eb11268293342d19da633e5eedaa4
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-07-04 19:35:43 +0100
+
+    Avoid variable-length arrays, which MSVC *still* doesn't support
+    
+    Based on patches from Christoph Höger.
+    
+    Bug: https://bugs.freedesktop.org/show_bug.cgi?id=51725
+
+ _dbus_bindings/message-append.c |   16 +++++++++++++---
+ _dbus_bindings/server.c         |   30 ++++++++++++++++++++----------
+ 2 files changed, 33 insertions(+), 13 deletions(-)
+
+commit bdc48547078b8ba09856c81b7c4f148fb163c01b
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-07-04 19:19:12 +0100
+
+    Use AC_C_INLINE to make sure "inline" works
+
+ configure.ac |    1 +
+ 1 file changed, 1 insertion(+)
+
+commit 3d23ff9e91151c2fb8e5ccb74067ff7ad6df3067
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-06-25 21:20:12 +0100
+
+    reset to unreleased
+
+ configure.ac |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 86b978042fa23d9b262cb0baa40398e21ddb0530
+Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
+Date:   2012-06-25 21:19:35 +0100
+
+    prepare release
+
+ NEWS         |    4 +++-
+ configure.ac |    4 ++--
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
 commit f6066573d25508f5cbbc5c12254086d419bb8828
 Author: Simon McVittie <simon.mcvittie@collabora.co.uk>
 Date:   2012-06-25 17:01:51 +0100

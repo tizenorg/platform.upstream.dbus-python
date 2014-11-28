@@ -88,6 +88,9 @@ DBusPyServer_set_auth_mechanisms(Server *self,
     PyObject *fast_seq = NULL, *references = NULL;
     Py_ssize_t length;
     Py_ssize_t i;
+    /* a mutable array of constant strings */
+    const char **list = NULL;
+    dbus_bool_t ret = FALSE;
 
     fast_seq = PySequence_Fast(auth_mechanisms,
             "Expecting sequence for auth_mechanisms parameter");
@@ -97,49 +100,53 @@ DBusPyServer_set_auth_mechanisms(Server *self,
 
     length = PySequence_Fast_GET_SIZE(fast_seq);
 
-    /* scope for list */
-    {
-        const char *list[length + 1];
+    list = calloc (length + 1, sizeof (char *));
 
-        if (!(references = PyTuple_New(length)))
-            goto error;
-
-        for (i = 0; i < length; ++i) {
-            PyObject *am, *am_as_bytes;
-
-            am = PySequence_Fast_GET_ITEM(auth_mechanisms, i);
-            if (!am) goto error;
-
-            if (PyUnicode_Check(am)) {
-                am_as_bytes = PyUnicode_AsUTF8String(am);
-                if (!am_as_bytes)
-                    goto error;
-            }
-            else {
-                am_as_bytes = am;
-                Py_INCREF(am_as_bytes);
-            }
-            list[i] = PyBytes_AsString(am_as_bytes);
-            if (!list[i])
-                goto error;
-
-            PyTuple_SET_ITEM(references, i, am_as_bytes);
-        }
-
-        list[length] = NULL;
-
-        Py_BEGIN_ALLOW_THREADS
-        dbus_server_set_auth_mechanisms(self->server, list);
-        Py_END_ALLOW_THREADS
+    if (!list) {
+        PyErr_NoMemory();
+        goto finally;
     }
 
+    if (!(references = PyTuple_New(length)))
+        goto finally;
+
+    for (i = 0; i < length; ++i) {
+        PyObject *am, *am_as_bytes;
+
+        am = PySequence_Fast_GET_ITEM(auth_mechanisms, i);
+        if (!am)
+            goto finally;
+
+        if (PyUnicode_Check(am)) {
+            am_as_bytes = PyUnicode_AsUTF8String(am);
+            if (!am_as_bytes)
+                goto finally;
+        }
+        else {
+            am_as_bytes = am;
+            Py_INCREF(am_as_bytes);
+        }
+        list[i] = PyBytes_AsString(am_as_bytes);
+        if (!list[i])
+            goto finally;
+
+        PyTuple_SET_ITEM(references, i, am_as_bytes);
+    }
+
+    list[length] = NULL;
+
+    Py_BEGIN_ALLOW_THREADS
+    dbus_server_set_auth_mechanisms(self->server, list);
+    Py_END_ALLOW_THREADS
+
+    ret = TRUE;
+
+finally:
+    if (list)
+        free (list);
     Py_CLEAR(fast_seq);
     Py_CLEAR(references);
-    return TRUE;
-  error:
-    Py_CLEAR(fast_seq);
-    Py_CLEAR(references);
-    return FALSE;
+    return ret;
 }
 
 /* Return a new reference to a Python Server or subclass corresponding
