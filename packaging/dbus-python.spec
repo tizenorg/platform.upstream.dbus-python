@@ -11,7 +11,6 @@ BuildRequires:  fdupes
 BuildRequires:  python-devel
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(dbus-glib-1)
-Requires:       libxml2-python
 Requires:       python-xml
 
 %description
